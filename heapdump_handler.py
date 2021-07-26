@@ -2,6 +2,7 @@ from botocore.exceptions import NoCredentialsError
 import boto3
 import glob
 import os
+from datetime import datetime
 
 SENDER = "tamcr94@gmail.com"
 RECIPIENT = "tamcr94.dev@gmail.com"
@@ -25,9 +26,13 @@ BODY_HTML = """<html>
 
 CHARSET = "UTF-8"
 
+AWS_ACCESS_KEY = os.getenv['AWS_ACCESS_KEY']
+AWS_PRIVATE_KEY = os.getenv['AWS_PRIVATE_KEY']
+AWS_REGION = os.getenv['AWS_REGION']
+
 def upload_to_aws(bucket, folder):
-    s3 = boto3.client('s3')
-    ses = boto3.client('ses')
+    s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
+    ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
 
     try:
         heap_files = glob.glob(folder + "/*.hprof")
@@ -35,7 +40,9 @@ def upload_to_aws(bucket, folder):
         for filename in heap_files:
             key = os.path.basename(filename)
             print("Putting %s as %s" % (filename,key))
-            s3.upload_file(filename, bucket, key)
+
+            name, ext = os.path.splitext(key)
+            s3.upload_file(filename, bucket, "%s_%s%s" % (name, datetime.now().strftime("%m%d%Y%H%M%S"), ext))
             
         print("Upload Successful")
 

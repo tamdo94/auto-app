@@ -14,8 +14,10 @@ RUN pip install boto3
 
 RUN pip3 --no-cache-dir install --upgrade awscli
 
+RUN apt-get install -y vim
+
 COPY web-app/target/web-app.war /usr/local/tomcat/webapps/ROOT.war
 COPY entrypoint.sh /entrypoint.sh
-COPY heapdump_handler.py /heapdump_handler.py
+COPY heapdump_handler.py /root/heapdump_handler.py
 
 ENTRYPOINT [ "bash", "/entrypoint.sh" ]
