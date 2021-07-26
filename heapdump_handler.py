@@ -26,9 +26,9 @@ BODY_HTML = """<html>
 
 CHARSET = "UTF-8"
 
-AWS_ACCESS_KEY = os.getenv['AWS_ACCESS_KEY']
-AWS_PRIVATE_KEY = os.getenv['AWS_PRIVATE_KEY']
-AWS_REGION = os.getenv['AWS_REGION']
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
+AWS_PRIVATE_KEY = os.getenv('AWS_PRIVATE_KEY')
+AWS_REGION = os.getenv('AWS_REGION')
 
 def upload_to_aws(bucket, folder):
     s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
