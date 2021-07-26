@@ -3,6 +3,9 @@ import boto3
 import glob
 import os
 from datetime import datetime
+import logging
+
+logging.getLogger().setLevel(os.environ.get("LOGLEVEL", "INFO"))
 
 SENDER = "tamcr94@gmail.com"
 RECIPIENT = "tamcr94.dev@gmail.com"
@@ -44,7 +47,7 @@ def upload_to_aws(bucket, folder):
             name, ext = os.path.splitext(key)
             s3.upload_file(filename, bucket, "%s_%s%s" % (name, datetime.now().strftime("%m%d%Y%H%M%S"), ext))
             
-        print("Upload Successful")
+        logging.info("Upload Successful")
 
         response = ses.send_email(
         Destination={
@@ -73,10 +76,10 @@ def upload_to_aws(bucket, folder):
 
         return True
     except FileNotFoundError:
-        print("The file was not found")
+        logging.info("The file was not found")
         return False
     except NoCredentialsError:
-        print("Credentials not available")
+        logging.info("Credentials not available")
         return False
 
 if __name__ == "__main__":
