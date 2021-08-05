@@ -1,9 +1,12 @@
+#!/usr/bin/python3
+
 from botocore.exceptions import NoCredentialsError
 import boto3
 import glob
 import os
 from datetime import datetime
 import logging
+import json
 
 logging.getLogger().setLevel(os.environ.get("LOGLEVEL", "INFO"))
 
@@ -29,23 +32,55 @@ BODY_HTML = """<html>
 
 CHARSET = "UTF-8"
 
+
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
 AWS_PRIVATE_KEY = os.getenv('AWS_PRIVATE_KEY')
 AWS_REGION = os.getenv('AWS_REGION')
 
+sns_email_msg = (
+    "Heap OOM Error \r\n"
+    "ENV: {0} \r\n"
+    "Timestamp: {1} \r\n"
+    "File: {2} \r\n" 
+)
+
 def upload_to_aws(bucket, folder):
     s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
     ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
+    sns = boto3.client('sns', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
 
     try:
         heap_files = glob.glob(folder + "/*.hprof")
 
         for filename in heap_files:
             key = os.path.basename(filename)
+            name, ext = os.path.splitext(key)
+            key = "%s_%s%s" % (name, datetime.now().strftime("%m%d%Y%H%M%S"), ext)
+
             print("Putting %s as %s" % (filename,key))
 
-            name, ext = os.path.splitext(key)
-            s3.upload_file(filename, bucket, "%s_%s%s" % (name, datetime.now().strftime("%m%d%Y%H%M%S"), ext))
+            s3.upload_file(filename, bucket, key)
+
+            location = s3.get_bucket_location(Bucket=bucket)['LocationConstraint']
+            url = "https://s3-%s.amazonaws.com/%s/%s" % (location, bucket, key)
+
+            sns_timestamp = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+            sns_default_msg = {
+                'timestamp': sns_timestamp,
+                'url': url
+            }
+
+            sns_email_msg.format("alpha", sns_timestamp, url)
+
+            response = sns.publish(
+                            TopicArn='arn:aws:sns:ap-southeast-1:458401166084:MyTopic',
+                            Message=json.dumps({'default': json.dumps(sns_default_msg)},
+                                               {'email': sns_email_msg}),
+                            Subject='HEAP OOM ERROR',
+                            MessageStructure='json'
+                        )
+
+            logging.info("Message publish suscess: {0}".format(response))
             
         logging.info("Upload Successful")
 
