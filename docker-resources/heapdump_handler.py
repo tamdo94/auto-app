@@ -50,32 +50,30 @@ def upload_to_aws(bucket, folder):
     sns = boto3.client('sns', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
 
     try:
-        heap_files = glob.glob(folder + "/*.hprof")
+        heap_files = glob.glob(folder + "/oom.tgz")
 
         for filename in heap_files:
             key = os.path.basename(filename)
             name, ext = os.path.splitext(key)
-            key = "%s_%s%s" % (name, datetime.now().strftime("%m%d%Y%H%M%S"), ext)
+            key = "%s_%s%s" % (name, datetime.now().strftime("%Y%m%d%H%M%S"), ext)
 
             print("Putting %s as %s" % (filename,key))
 
-            s3.upload_file(filename, bucket, key)
+            s3.upload_file(filename, bucket, key, ExtraArgs={'ACL': 'public-read'})
 
             location = s3.get_bucket_location(Bucket=bucket)['LocationConstraint']
             url = "https://s3-%s.amazonaws.com/%s/%s" % (location, bucket, key)
 
-            sns_timestamp = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+            sns_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sns_default_msg = {
                 'timestamp': sns_timestamp,
                 'url': url
             }
 
-            sns_email_msg.format("alpha", sns_timestamp, url)
-
             response = sns.publish(
                             TopicArn='arn:aws:sns:ap-southeast-1:458401166084:MyTopic',
-                            Message=json.dumps({'default': json.dumps(sns_default_msg)},
-                                               {'email': sns_email_msg}),
+                            Message=json.dumps({'default': json.dumps(sns_default_msg),
+                                               'email': sns_email_msg.format("alpha", sns_timestamp, url) }),
                             Subject='HEAP OOM ERROR',
                             MessageStructure='json'
                         )
@@ -119,4 +117,5 @@ def upload_to_aws(bucket, folder):
 
 if __name__ == "__main__":
     # execute only if run as a script
+    os.system("cd /var/log && mkdir oom && mv *.hprof ./oom && tar -czvf oom.tgz oom && rm -r oom")
     upload_to_aws('tamaws2', '/var/log/')
