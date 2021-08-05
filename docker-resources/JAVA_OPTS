@@ -1,5 +1,5 @@
--Xms512M
--Xmx512M
+-Xms1023M
+-Xmx1023M
 -XX:+HeapDumpOnOutOfMemoryError
 -XX:HeapDumpPath=/var/log/
 -XX:OnOutOfMemoryError="python3 /root/heapdump_handler.py"

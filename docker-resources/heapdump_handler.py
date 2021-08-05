@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from botocore.config import Config
 from botocore.exceptions import NoCredentialsError
 import boto3
 import glob
@@ -7,6 +8,7 @@ import os
 from datetime import datetime
 import logging
 import json
+from boto3.s3.transfer import TransferConfig
 
 logging.getLogger().setLevel(os.environ.get("LOGLEVEL", "INFO"))
 
@@ -50,7 +52,7 @@ def upload_to_aws(bucket, folder):
     sns = boto3.client('sns', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
 
     try:
-        heap_files = glob.glob(folder + "/oom.tgz")
+        heap_files = glob.glob(folder + "/*.hprof")
 
         for filename in heap_files:
             key = os.path.basename(filename)
@@ -59,6 +61,8 @@ def upload_to_aws(bucket, folder):
 
             print("Putting %s as %s" % (filename,key))
 
+            # config = TransferConfig(multipart_threshold=1024*25, max_concurrency=10,
+            #                         multipart_chunksize=1024*25, use_threads=True)
             s3.upload_file(filename, bucket, key, ExtraArgs={'ACL': 'public-read'})
 
             location = s3.get_bucket_location(Bucket=bucket)['LocationConstraint']
@@ -117,5 +121,5 @@ def upload_to_aws(bucket, folder):
 
 if __name__ == "__main__":
     # execute only if run as a script
-    os.system("cd /var/log && mkdir oom && mv *.hprof ./oom && tar -czvf oom.tgz oom && rm -r oom")
+    # os.system("cd /var/log && mkdir oom && mv *.hprof ./oom && tar -czvf oom.tgz oom && rm -r oom")
     upload_to_aws('tamaws2', '/var/log/')
