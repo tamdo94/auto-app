@@ -21,4 +21,7 @@ COPY docker-resources/JAVA_OPTS /root/JAVA_OPTS
 COPY docker-resources/heapdump_handler.py /root/heapdump_handler.py
 COPY docker-resources/startup.py /root/startup.py
 
+COPY docker-resources/hooks.jar /usr/local/tomcat/lib/hooks.jar
+COPY docker-resources/server.xml /usr/local/tomcat/conf/server.xml
+
 ENTRYPOINT [ "python3", "/root/startup.py" ]
