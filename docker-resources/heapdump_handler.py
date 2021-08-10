@@ -35,9 +35,9 @@ BODY_HTML = """<html>
 CHARSET = "UTF-8"
 
 
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
-AWS_PRIVATE_KEY = os.getenv('AWS_PRIVATE_KEY')
-AWS_REGION = os.getenv('AWS_REGION')
+# AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
+# AWS_PRIVATE_KEY = os.getenv('AWS_PRIVATE_KEY')
+# AWS_REGION = os.getenv('AWS_REGION')
 
 sns_email_msg = (
     "Heap OOM Error \r\n"
@@ -47,69 +47,69 @@ sns_email_msg = (
 )
 
 def upload_to_aws(bucket, folder):
-    s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
-    ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
-    sns = boto3.client('sns', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
+    # s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
+    # ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
+    # sns = boto3.client('sns', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_PRIVATE_KEY)
 
     try:
-        heap_files = glob.glob(folder + "/*.hprof")
+        heap_files = glob.glob(folder + "/*.hprof.gz")
 
         for filename in heap_files:
             key = os.path.basename(filename)
-            name, ext = os.path.splitext(key)
-            key = "%s_%s%s" % (name, datetime.now().strftime("%Y%m%d%H%M%S"), ext)
+            name, hprof, gz = key.split(".")
+            key = "%s_%s.%s.%s" % (name, datetime.now().strftime("%Y%m%d%H%M%S"), hprof, gz)
 
             print("Putting %s as %s" % (filename,key))
 
             # config = TransferConfig(multipart_threshold=1024*25, max_concurrency=10,
             #                         multipart_chunksize=1024*25, use_threads=True)
-            s3.upload_file(filename, bucket, key, ExtraArgs={'ACL': 'public-read'})
+        #     s3.upload_file(filename, bucket, key, ExtraArgs={'ACL': 'public-read'})
 
-            location = s3.get_bucket_location(Bucket=bucket)['LocationConstraint']
-            url = "https://s3-%s.amazonaws.com/%s/%s" % (location, bucket, key)
+        #     location = s3.get_bucket_location(Bucket=bucket)['LocationConstraint']
+        #     url = "https://s3-%s.amazonaws.com/%s/%s" % (location, bucket, key)
 
-            sns_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            sns_default_msg = {
-                'timestamp': sns_timestamp,
-                'url': url
-            }
+        #     sns_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #     sns_default_msg = {
+        #         'timestamp': sns_timestamp,
+        #         'url': url
+        #     }
 
-            response = sns.publish(
-                            TopicArn='arn:aws:sns:ap-southeast-1:458401166084:MyTopic',
-                            Message=json.dumps({'default': json.dumps(sns_default_msg),
-                                               'email': sns_email_msg.format("alpha", sns_timestamp, url) }),
-                            Subject='HEAP OOM ERROR',
-                            MessageStructure='json'
-                        )
+        #     response = sns.publish(
+        #                     TopicArn='arn:aws:sns:ap-southeast-1:458401166084:MyTopic',
+        #                     Message=json.dumps({'default': json.dumps(sns_default_msg),
+        #                                        'email': sns_email_msg.format("alpha", sns_timestamp, url) }),
+        #                     Subject='HEAP OOM ERROR',
+        #                     MessageStructure='json'
+        #                 )
 
-            logging.info("Message publish suscess: {0}".format(response))
+        #     logging.info("Message publish suscess: {0}".format(response))
             
-        logging.info("Upload Successful")
+        # logging.info("Upload Successful")
 
-        response = ses.send_email(
-        Destination={
-            'ToAddresses': [
-                RECIPIENT,
-            ],
-        },
-        Message={
-            'Body': {
-                'Html': {
-                    'Charset': CHARSET,
-                    'Data': BODY_HTML,
-                },
-                'Text': {
-                    'Charset': CHARSET,
-                    'Data': BODY_TEXT,
-                },
-            },
-            'Subject': {
-                'Charset': CHARSET,
-                'Data': SUBJECT,
-            },
-        },
-        Source=SENDER
-        )   
+        # response = ses.send_email(
+        # Destination={
+        #     'ToAddresses': [
+        #         RECIPIENT,
+        #     ],
+        # },
+        # Message={
+        #     'Body': {
+        #         'Html': {
+        #             'Charset': CHARSET,
+        #             'Data': BODY_HTML,
+        #         },
+        #         'Text': {
+        #             'Charset': CHARSET,
+        #             'Data': BODY_TEXT,
+        #         },
+        #     },
+        #     'Subject': {
+        #         'Charset': CHARSET,
+        #         'Data': SUBJECT,
+        #     },
+        # },
+        # Source=SENDER
+        # )   
 
         return True
     except FileNotFoundError:
@@ -121,5 +121,5 @@ def upload_to_aws(bucket, folder):
 
 if __name__ == "__main__":
     # execute only if run as a script
-    # os.system("cd /var/log && mkdir oom && mv *.hprof ./oom && tar -czvf oom.tgz oom && rm -r oom")
+    os.system("cd /var/log && gzip *.hprof")
     upload_to_aws('tamaws2', '/var/log/')
